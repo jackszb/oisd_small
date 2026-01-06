@@ -1,0 +1,41 @@
+name: Update oisd-small domains
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 每天 UTC 03:00
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download and extract domains
+        run: |
+          set -e
+
+          curl -fsSL https://raw.githubusercontent.com/sjhgvr/oisd/main/oisd_small.txt \
+          | grep -E '^\|\|[^/^*]+?\^$' \
+          | sed 's/^||//; s/\^$//' \
+          | sort -u \
+          > oisd-small.txt
+
+          # 防御：删除可能存在的空行
+          sed -i '/^$/d' oisd-small.txt
+
+          echo "Generated $(wc -l < oisd-small.txt) domains"
+
+      - name: Commit & Push
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+
+          git add oisd-small.txt
+          git commit -m "Auto update oisd-small domain list" || echo "No changes"
+          git push
